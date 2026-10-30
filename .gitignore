@@ -1,0 +1,21 @@
+# Adicionar ao .gitignore do repositório (sem apagar regras existentes)
+/AGENTS.md
+/specs/
+/.codex/
+/docs/course/
+.env
+.env.*
+!.env.example
+*secret*.local.yaml
+**/bin/
+**/obj/
+
+/.gitignore.fragment
+/.vs/
+**/TestResults/
+*.user
+*.suo
+*.pfx
+*.p12
+*.key
+/secrets/
