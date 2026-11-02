@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../FiapCloudGames.Catalog.Application/FiapCloudGames.Catalog.Application.csproj" />
+    <ProjectReference Include="../FiapCloudGames.Catalog.Infrastructure/FiapCloudGames.Catalog.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.22" />
+  </ItemGroup>
+</Project>

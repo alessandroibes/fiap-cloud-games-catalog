@@ -1,3 +1,5 @@
 # Preparação e implantação
 
-Este diretório é o clone de destino. Consulte [README.md](README.md) para o estado técnico. O fragmento de gitignore foi incorporado ao .gitignore e permanece ignorado como material local. Não versionar AGENTS.md, specs/, .codex/ ou docs/course/. Implantação será documentada nos gates G6/G7, após validação real.
+O serviço possui Dockerfile multi-stage e Compose local conectado à infraestrutura G1. Consulte [operação](docs/operations.md) para configuração, migration explícita e execução; [README](README.md) para estado técnico e testes. Compose completo pertence ao G6 e manifests /k8s ao G7, usando Docker Desktop Kubernetes.
+
+Não versionar .env, AGENTS.md, specs/, .codex/ ou docs/course/. Cada serviço mantém histórico Git independente. Não publicar imagens nem fazer push automaticamente.

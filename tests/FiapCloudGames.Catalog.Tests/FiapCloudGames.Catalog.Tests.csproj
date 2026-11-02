@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/FiapCloudGames.Catalog.Api/FiapCloudGames.Catalog.Api.csproj" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.22" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <ProjectReference Include="../FiapCloudGames.Catalog.Consumer.Contracts/FiapCloudGames.Catalog.Consumer.Contracts.csproj" Aliases="Consumer" />
+    <None Include="../../docs/contracts/v1/order-placed-v1.md" Link="order-placed-v1.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../docs/contracts/v1/payment-processed-v1.md" Link="payment-processed-v1.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

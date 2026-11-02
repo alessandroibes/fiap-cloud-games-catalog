@@ -1,0 +1,22 @@
+name: fcg-catalog-local
+services:
+  catalog:
+    image: fiap-cloud-games-catalog:local
+    build: .
+    environment:
+      ConnectionStrings__Catalog: ${CATALOG_DOCKER_CONNECTION:?Configure .env}
+      Jwt__Key: ${Jwt__Key:?Configure .env}
+      Jwt__Issuer: ${Jwt__Issuer:-fiap-cloud-games-users}
+      Jwt__Audience: ${Jwt__Audience:-fiap-cloud-games}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: 5672
+      RabbitMq__VirtualHost: fcg
+      RabbitMq__Username: ${RabbitMq__Username:?Configure .env}
+      RabbitMq__Password: ${RabbitMq__Password:?Configure .env}
+    ports: ["127.0.0.1:5082:8080"]
+    networks: [fcg]
+    restart: unless-stopped
+networks:
+  fcg:
+    external: true
+    name: fiap-cloud-games_default

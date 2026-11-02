@@ -4,18 +4,49 @@ CRUD de jogos, pedidos Pending, biblioteca e concessão somente após Approved.
 
 ## Estado
 
-Preparação documental G0 em 30/10/2026. Ainda não há aplicação executável, Dockerfile ou manifests Kubernetes. Nenhum teste de aplicação foi executado. Os gates seguintes entregarão essas capacidades com evidências.
+G3 implementado em .NET 8 com PostgreSQL/EF Core, validação JWT de Users, CRUD de jogos, pedidos assíncronos, Outbox e consumo idempotente de pagamentos. Suíte local: 48 testes aprovados. [Evidências e limites](docs/quality/g3-validation.md).
+
+Os testes publicam resultados de pagamento por uma fixture independente; PaymentsAPI real pertence ao G4. Integração completa no G6 e /k8s no G7, com Docker Desktop Kubernetes.
 
 ## Documentação
 
 - [ADRs aceitos](docs/architecture/decisions/README.md).
 - [Decisões funcionais confirmadas](docs/architecture/functional-decisions.md).
 - [Especificação de referência](docs/specification.md).
-- Contratos canônicos e roadmap: repositório fiap-cloud-games-infrastructure, docs/contracts/v1/ e docs/implementation/roadmap.md. Tipos C# serão locais, sem dependência de projetos irmãos.
+- [Rotas HTTP](docs/http-api.md) e [operação local](docs/operations.md).
+- [OrderPlacedEvent V1](docs/contracts/v1/order-placed-v1.md) e [PaymentProcessedEvent V1](docs/contracts/v1/payment-processed-v1.md).
+- Contratos canônicos e roadmap: repositório fiap-cloud-games-infrastructure, docs/contracts/v1/ e docs/implementation/roadmap.md. Tipos C# locais, sem dependência de projetos irmãos.
 
 ## Execução e configuração
 
-Comandos, variáveis, migrations, Docker e Kubernetes serão documentados quando implementados e verificados. PostgreSQL isolado por serviço persistente, RabbitMQ/MassTransit e Docker Desktop Kubernetes são decisões aprovadas. Migrations serão explícitas antes das APIs. Não utilizar SQLite ou Kind.
+Com infraestrutura G1 e configuração local de Users disponíveis, na raiz deste repositório:
+
+```powershell
+./scripts/Initialize-Local.ps1
+docker compose build catalog
+docker compose run --rm catalog --migrate
+docker compose up -d catalog
+```
+
+API em http://localhost:5082; saúde em /health/live e /health/ready. A preparação cria .env ignorado, com credencial exclusiva do Catalog e JWT compatível com Users. Não há migration automática no startup. Consulte [operação](docs/operations.md) para variáveis, execução pelo SDK, retentativas e recuperação.
+
+```powershell
+./scripts/Validate-G3.ps1
+```
+
+Testes usam PostgreSQL e RabbitMQ próprios, nas portas 55434 e 5674. A suíte interrompe seu broker e recria sua fila de Payments para validar recuperação. Não executar suítes simultâneas nesse ambiente.
+
+## Fluxo de compra
+
+POST /api/orders com { gameId } usa identidade do JWT e preço do catálogo, persiste Pending + Outbox e retorna 202. Somente PaymentProcessedEvent Approved concede o jogo. Rejected permite outro pedido; compra de jogo já adquirido ou com pedido pendente retorna 409. Exclusão lógica preserva pedidos e biblioteca. Pedido mantém preço histórico; biblioteca mostra preço atual.
+
+## Organização
+
+- Domain: Game, Order, LibraryEntry e validação monetária.
+- Application: casos de uso, porta de persistência e validação do resultado de pagamento.
+- Infrastructure: PostgreSQL, migration, Outbox, Inbox lógica e consumer RabbitMQ.
+- Api: HTTP, JWT, autorização e health checks.
+- Contracts: eventos V1 locais; tests: domínio, contratos independentes e integração real.
 
 ## Git e segurança
 

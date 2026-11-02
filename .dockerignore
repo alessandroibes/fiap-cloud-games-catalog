@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/TestResults/
+.git/
+.env
+.env.*
+.codex/
+AGENTS.md
+specs/
+docs/course/
+secrets/
+tests/

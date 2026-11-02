@@ -1,0 +1,33 @@
+name: fcg-catalog-g3-tests
+services:
+  postgres:
+    image: postgres:17-bookworm@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5
+    environment:
+      POSTGRES_DB: fcg_catalog_test
+      POSTGRES_USER: fcg_catalog_test
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:?Configure .env}
+    ports: ["127.0.0.1:${TEST_DB_PORT:-55434}:5432"]
+    volumes: ["catalog-test-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U fcg_catalog_test -d fcg_catalog_test"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+  rabbitmq:
+    image: rabbitmq:4.2.9-management@sha256:d1fb8b38bd0805935907a22b2b7483fba38c9a8dd7e8a74bfba4a6e7a9e91707
+    hostname: catalog-g3-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: catalog_test
+      RABBITMQ_DEFAULT_PASS: ${TEST_RABBIT_PASSWORD:?Configure .env}
+      RABBITMQ_DEFAULT_VHOST: fcg_test
+    ports: ["127.0.0.1:${TEST_RABBIT_PORT:-5674}:5672"]
+    volumes: ["catalog-test-broker:/var/lib/rabbitmq"]
+    healthcheck:
+      test: [CMD, gosu, rabbitmq, rabbitmq-diagnostics, -q, check_running]
+      start_period: 15s
+      interval: 3s
+      timeout: 10s
+      retries: 30
+volumes:
+  catalog-test-data:
+  catalog-test-broker:
