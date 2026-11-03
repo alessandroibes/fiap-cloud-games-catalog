@@ -17,6 +17,12 @@ Testes isolados usam uma fixture de pagamento independente. Integração com Pay
 - [OrderPlacedEvent V1](docs/contracts/v1/order-placed-v1.md) e [PaymentProcessedEvent V1](docs/contracts/v1/payment-processed-v1.md).
 - Contratos canônicos e roadmap: repositório fiap-cloud-games-infrastructure, docs/contracts/v1/ e docs/implementation/roadmap.md. Tipos C# locais, sem dependência de projetos irmãos.
 
+## Repositório e solução completa
+
+Código deste serviço: [GitHub](https://github.com/alessandroibes/fiap-cloud-games-catalog). Para executar os quatro serviços juntos, siga o [README da infraestrutura](https://github.com/alessandroibes/fiap-cloud-games-infrastructure), com clones irmãos e `scripts/Start-Local.ps1` ou `scripts/Start-Kubernetes.ps1`.
+
+Os comandos abaixo descrevem o modo de desenvolvimento individual. Não iniciar o Compose individual ao mesmo tempo que a API correspondente do Compose central, pois compartilham portas e dependências. As suítes de teste usam ambientes exclusivos.
+
 ## Execução e configuração
 
 Com infraestrutura G1 e configuração local de Users disponíveis, na raiz deste repositório:
@@ -58,4 +64,19 @@ Manifestos e sequência de implantação em [k8s/README.md](k8s/README.md). G7 c
 
 ## Resiliência — G8
 
-Regressão concluída com 51 testes aprovados; [evidências e limites](docs/quality/g8-validation.md). Recuperação integrada no Kubernetes registrada na infraestrutura. Próxima etapa: entrega acadêmica G9.
+Regressão concluída com 51 testes aprovados; [evidências e limites](docs/quality/g8-validation.md). Recuperação integrada no Kubernetes registrada na infraestrutura. Preparação documental da entrega G9 na infraestrutura; vídeo e relatório acadêmico dependem dos dados e da gravação do responsável.
+
+## Variáveis de ambiente
+
+Exemplo sem credenciais reais: [.env.example](.env.example). Gere a configuração com Initialize-Local; segredos efetivos ficam em .env ignorado. A infraestrutura central possui configuração própria e traduz suas variáveis para estas chaves da aplicação.
+
+| Chave | Finalidade |
+|---|---|
+| ConnectionStrings__Catalog | Conexão PostgreSQL exclusiva deste serviço |
+| CATALOG_DOCKER_CONNECTION | Conexão usada pelo Compose individual, com DNS postgres |
+| RabbitMq__Host / RabbitMq__Port | Endereço e porta AMQP |
+| RabbitMq__VirtualHost / RabbitMq__Username / RabbitMq__Password | Vhost e credencial externa do broker |
+| ASPNETCORE_URLS | Endereço HTTP na execução local pelo SDK |
+| Jwt__Key / Jwt__Issuer / Jwt__Audience | Assinatura e validação compatíveis entre Users e Catalog |
+
+Portas e credenciais exclusivas de testes estão descritas em .env.example e [operação](docs/operations.md). Consulte [k8s/README.md](k8s/README.md) para ConfigMap/Secret, probes e Jobs. Nunca usar credenciais de outro banco nem executar migrations automaticamente no startup.
