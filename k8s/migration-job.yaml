@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: catalog-migrate
+  namespace: fcg-phase2
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 180
+  template:
+    metadata:
+      labels: {job: catalog-migrate}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1654
+        runAsGroup: 1654
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: migrate
+          image: fiap-cloud-games-catalog:g7
+          imagePullPolicy: IfNotPresent
+          args: ["--migrate"]
+          envFrom:
+            - configMapRef: {name: catalog-config}
+            - secretRef: {name: catalog-secret}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}

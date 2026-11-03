@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-config
+  namespace: fcg-phase2
+data:
+  ASPNETCORE_HTTP_PORTS: "8080"
+  RabbitMq__Host: rabbitmq
+  RabbitMq__Port: "5672"
+  RabbitMq__VirtualHost: fcg
+  RabbitMq__Username: fcg_local
+  Jwt__Issuer: fiap-cloud-games-users
+  Jwt__Audience: fiap-cloud-games

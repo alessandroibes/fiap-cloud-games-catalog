@@ -1,5 +1,7 @@
 # Preparação e implantação
 
-O serviço possui Dockerfile multi-stage e Compose local conectado à infraestrutura G1. Consulte [operação](docs/operations.md) para configuração, migration explícita e execução; [README](README.md) para estado técnico e testes. Compose completo pertence ao G6 e manifests /k8s ao G7, usando Docker Desktop Kubernetes.
+Dockerfile multi-stage e execução local descritos no [README](README.md) e em [operação](docs/operations.md). A orquestração completa do Compose foi validada no G6 no repositório de infraestrutura.
 
-Não versionar .env, AGENTS.md, specs/, .codex/ ou docs/course/. Cada serviço mantém histórico Git independente. Não publicar imagens nem fazer push automaticamente.
+Os [manifestos Kubernetes](k8s/README.md) incluem Deployment, Service, ConfigMap e Job de migration, com referências a Secret externo. A implantação deve seguir os scripts de infraestrutura para respeitar a ordem de migrations/bootstrap. G7 concluído; [evidências locais](docs/quality/g7-validation.md) e registro transversal na infraestrutura.
+
+Não versionar .env, AGENTS.md, specs/, .codex/ ou docs/course/. Histórico independente, sem push ou publicação automática de imagens.

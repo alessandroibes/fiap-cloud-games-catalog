@@ -6,7 +6,7 @@ CRUD de jogos, pedidos Pending, biblioteca e concessão somente após Approved.
 
 G3 implementado em .NET 8 com PostgreSQL/EF Core, validação JWT de Users, CRUD de jogos, pedidos assíncronos, Outbox e consumo idempotente de pagamentos. Suíte local: 48 testes aprovados. [Evidências e limites](docs/quality/g3-validation.md).
 
-Os testes publicam resultados de pagamento por uma fixture independente; PaymentsAPI real pertence ao G4. Integração completa no G6 e /k8s no G7, com Docker Desktop Kubernetes.
+Testes isolados usam uma fixture de pagamento independente. Integração com Payments real validada no Compose (G6) e Kubernetes Docker Desktop (G7).
 
 ## Documentação
 
@@ -51,3 +51,7 @@ POST /api/orders com { gameId } usa identidade do JWT e preço do catálogo, per
 ## Git e segurança
 
 Clone independente fornecido pelo responsável; manter o origin existente. Commits separados, sem push ou publicação de imagens sem autorização. Documentação técnica é versionada. AGENTS.md, specs/, .codex/ e docs/course/ são locais e ignorados; segredos fora do Git.
+
+## Kubernetes local
+
+Manifestos e sequência de implantação em [k8s/README.md](k8s/README.md). G7 concluído; [evidências deste serviço](docs/quality/g7-validation.md) e registro transversal na infraestrutura.
