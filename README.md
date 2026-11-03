@@ -4,7 +4,7 @@ CRUD de jogos, pedidos Pending, biblioteca e concessão somente após Approved.
 
 ## Estado
 
-G3 implementado em .NET 8 com PostgreSQL/EF Core, validação JWT de Users, CRUD de jogos, pedidos assíncronos, Outbox e consumo idempotente de pagamentos. Suíte local: 48 testes aprovados. [Evidências e limites](docs/quality/g3-validation.md).
+G3 implementado em .NET 8 com PostgreSQL/EF Core, validação JWT de Users, CRUD de jogos, pedidos assíncronos, Outbox e consumo idempotente de pagamentos. Suíte local atual: 51 testes aprovados no G8 (48 no registro histórico G3). [Evidências e limites](docs/quality/g3-validation.md).
 
 Testes isolados usam uma fixture de pagamento independente. Integração com Payments real validada no Compose (G6) e Kubernetes Docker Desktop (G7).
 
@@ -55,3 +55,7 @@ Clone independente fornecido pelo responsável; manter o origin existente. Commi
 ## Kubernetes local
 
 Manifestos e sequência de implantação em [k8s/README.md](k8s/README.md). G7 concluído; [evidências deste serviço](docs/quality/g7-validation.md) e registro transversal na infraestrutura.
+
+## Resiliência — G8
+
+Regressão concluída com 51 testes aprovados; [evidências e limites](docs/quality/g8-validation.md). Recuperação integrada no Kubernetes registrada na infraestrutura. Próxima etapa: entrega acadêmica G9.

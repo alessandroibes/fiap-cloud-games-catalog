@@ -2,6 +2,11 @@ extern alias Consumer;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using FiapCloudGames.Catalog.Application;
+using Microsoft.Extensions.DependencyInjection;
 using FiapCloudGames.Catalog.Domain;
 using FiapCloudGames.Catalog.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +40,46 @@ public sealed class IntegrationTests(CatalogFixture f) : IClassFixture<CatalogFi
     {
         await using var db = f.Db(); var order = await db.Orders.SingleAsync(x => x.Id == orderId);
         return new Payment { EventId = Guid.NewGuid(), OccurredAt = DateTimeOffset.UtcNow, OrderId = order.Id, PaymentId = Guid.NewGuid(), UserId = order.UserId, GameId = order.GameId, Price = order.Price, Currency = order.Currency, Status = status };
+    }
+    [Fact]
+    public async Task FailureAfterGrantCommitBeforeAckSurvivesRestartWithoutDuplicate()
+    {
+        using var client = f.As(Guid.NewGuid()); var id = await Place(client, await Game()); var payment = await Result(id);
+        f.Probe.FailOrder = id;
+        await f.Publish(payment);
+        await f.Probe.Committed.Task.WaitAsync(TimeSpan.FromSeconds(45));
+        await f.RestartApi();
+        await f.Publish(payment);
+        var replay = payment with { EventId = Guid.NewGuid() };
+        await f.Publish(replay); await f.WaitReceipt(replay.EventId);
+        await using var db = f.Db();
+        Assert.Equal(OrderStatus.Approved, (await db.Orders.FindAsync(id))!.Status);
+        Assert.Equal(1, await db.Library.CountAsync(x => x.OrderId == id));
+        Assert.Equal(2, await db.PaymentReceipts.CountAsync(x => x.OrderId == id));
+        Assert.DoesNotContain(f.Errors, x => x.EventId == payment.EventId);
+    }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EquivalentPriceScaleAcceptsCurrentAndLegacyReceipts(bool legacy)
+    {
+        using var client = f.As(Guid.NewGuid()); var id = await Place(client, await Game()); var payment = await Result(id);
+        await f.Publish(payment); await f.WaitReceipt(payment.EventId);
+        var p = new PaymentResult(payment.EventId, payment.OccurredAt, payment.OrderId, payment.PaymentId, payment.UserId, payment.GameId, payment.Status, 59.9m, payment.Currency);
+        if (legacy)
+        {
+            await using var db = f.Db(); var receipt = await db.PaymentReceipts.FindAsync(payment.EventId);
+            receipt!.Fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(p with { Price = 59.900m }))));
+            await db.SaveChangesAsync();
+        }
+        using var scope = f.Factory.Services.CreateScope(); var service = scope.ServiceProvider.GetRequiredService<CatalogService>();
+        foreach (var price in new[] { "59.9", "59.90", "59.9000" })
+            await service.ProcessPayment(p with { Price = decimal.Parse(price, CultureInfo.InvariantCulture) }, default);
+        await Assert.ThrowsAsync<InvalidPaymentException>(() => service.ProcessPayment(p with { Price = 59.91m }, default));
+        await Assert.ThrowsAsync<InvalidPaymentException>(() => service.ProcessPayment(p with { Status = "Rejected" }, default));
+        await using var check = f.Db();
+        Assert.Equal(1, await check.Library.CountAsync(x => x.OrderId == id));
+        Assert.Equal(1, await check.PaymentReceipts.CountAsync(x => x.OrderId == id));
     }
     [Fact]
     public async Task CrudRequiresAdminAndDeletionHidesGame()
@@ -211,7 +256,7 @@ public sealed class IntegrationTests(CatalogFixture f) : IClassFixture<CatalogFi
         {
             id = await Place(client, game);
             await using (var db = f.Db()) Assert.True(await db.Set<MassTransit.EntityFrameworkCoreIntegration.OutboxMessage>().AnyAsync(x => x.Body.Contains(id.ToString())));
-            await f.RestartApi(); Assert.Equal(HttpStatusCode.OK, (await f.Client.GetAsync("/health/ready")).StatusCode);
+            await f.RestartApi(false); Assert.Equal(HttpStatusCode.OK, (await f.Client.GetAsync("/health/ready")).StatusCode);
         }
         finally { await f.Docker("start", "rabbitmq"); }
         await f.WaitOrder(id);

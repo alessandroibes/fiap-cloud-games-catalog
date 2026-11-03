@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using FiapCloudGames.Catalog.Application;
@@ -12,6 +13,18 @@ namespace FiapCloudGames.Catalog.Infrastructure;
 
 public sealed class CatalogStore(CatalogDbContext db, IPublishEndpoint publisher, TimeProvider clock) : ICatalogStore
 {
+    private static string Fingerprint(PaymentResult p) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(p))));
+    private static bool MatchesLegacyFingerprint(PaymentResult p, string fingerprint)
+    {
+        // Recibos anteriores preservavam a escala decimal do JSON. Aceita somente
+        // representações numericamente iguais, mantendo todos os demais campos.
+        for (var scale = 0; scale <= 28; scale++)
+        {
+            if (decimal.TryParse(p.Price.ToString("F" + scale, CultureInfo.InvariantCulture), NumberStyles.Number, CultureInfo.InvariantCulture, out var price)
+                && price == p.Price && Fingerprint(p with { Price = price }) == fingerprint) return true;
+        }
+        return false;
+    }
     // Todos os fluxos que alteram um jogo ou sua posse usam o mesmo lock PostgreSQL.
     private async Task<Game> LockGame(Guid id, CancellationToken ct) =>
         await db.Games.FromSqlInterpolated($"SELECT * FROM \"Games\" WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct) ?? throw new NotFoundException();
@@ -61,11 +74,11 @@ public sealed class CatalogStore(CatalogDbContext db, IPublishEndpoint publisher
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         // Deduplicação lógica pelo EventId, independente do MessageId do transporte.
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({p.EventId.ToString()}, 0))", ct);
-        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(p))));
+        var fingerprint = Fingerprint(p with { Price = decimal.Parse(p.Price.ToString("F2", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture) });
         var receipt = await db.PaymentReceipts.FindAsync([p.EventId], ct);
         if (receipt is not null)
         {
-            if (receipt.Fingerprint != fingerprint) throw new InvalidPaymentException("EventId reutilizado com conteúdo divergente.");
+            if (receipt.Fingerprint != fingerprint && !MatchesLegacyFingerprint(p, receipt.Fingerprint)) throw new InvalidPaymentException("EventId reutilizado com conteúdo divergente.");
             return;
         }
         var orderGame = await db.Orders.Where(x => x.Id == p.OrderId).Select(x => (Guid?)x.GameId).SingleOrDefaultAsync(ct);

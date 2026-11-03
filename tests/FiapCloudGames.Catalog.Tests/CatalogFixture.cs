@@ -1,6 +1,7 @@
 extern alias Consumer;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Data.Common;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -43,13 +44,29 @@ public sealed class FailurePlan : SaveChangesInterceptor
     }
 }
 
-public sealed class CatalogFactory(Dictionary<string, string?> config, FailurePlan failures) : WebApplicationFactory<Program>
+public sealed class CommitProbe : DbTransactionInterceptor
+{
+    public Guid FailOrder { get; set; }
+    public TaskCompletionSource<bool> Committed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public override Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData data, CancellationToken ct = default)
+    {
+        if (FailOrder != Guid.Empty && data.Context!.ChangeTracker.Entries<PaymentReceipt>().Any(e => e.Entity.OrderId == FailOrder))
+        {
+            FailOrder = Guid.Empty;
+            Committed.TrySetResult(true);
+            throw new IOException("Falha controlada após commit da concessão e antes do ACK.");
+        }
+        return Task.CompletedTask;
+    }
+}
+
+public sealed class CatalogFactory(Dictionary<string, string?> config, FailurePlan failures, CommitProbe? probe = null) : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
         foreach (var pair in config) builder.UseSetting(pair.Key, pair.Value);
-        builder.ConfigureServices(services => services.AddDbContext<CatalogDbContext>(o => o.AddInterceptors(failures)));
+        builder.ConfigureServices(services => services.AddDbContext<CatalogDbContext>(o => o.AddInterceptors(failures, probe ?? new CommitProbe())));
     }
 }
 
@@ -61,6 +78,7 @@ public sealed class CatalogFixture : IAsyncLifetime
     public CatalogFactory Factory { get; private set; } = null!;
     public HttpClient Client { get; private set; } = null!;
     public FailurePlan Failures { get; } = new();
+    public CommitProbe Probe { get; } = new();
     private IBusControl bus = null!;
     public ConcurrentQueue<RemoteOrder> Orders { get; } = new();
     public ConcurrentQueue<RemotePayment> Errors { get; } = new();
@@ -116,8 +134,12 @@ public sealed class CatalogFixture : IAsyncLifetime
         StartApi();
         await Factory.Services.GetRequiredService<IBusControl>().StartAsync(timeout.Token);
     }
-    private void StartApi() { Factory = new CatalogFactory(Config, Failures); Client = Factory.CreateClient(); }
-    public async Task RestartApi() { Client.Dispose(); await Factory.DisposeAsync(); StartApi(); }
+    private void StartApi() { Factory = new CatalogFactory(Config, Failures, Probe); Client = Factory.CreateClient(); }
+    public async Task RestartApi(bool waitForBus = true)
+    {
+        Client.Dispose(); await Factory.DisposeAsync(); StartApi();
+        if (waitForBus) { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45)); await Factory.Services.GetRequiredService<IBusControl>().StartAsync(timeout.Token); }
+    }
     public async Task RecreatePaymentsQueue()
     {
         Client.Dispose(); await Factory.DisposeAsync();
